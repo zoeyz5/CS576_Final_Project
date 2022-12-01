@@ -5,6 +5,10 @@ import java.io.*;
 import javax.swing.*;
 import java.util.*;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
 
 
 public class ImageDisplay {
@@ -213,6 +217,13 @@ public class ImageDisplay {
 	}
 
 
+
+
+
+
+	//CODE FOR MATCHING MACROBLOCKS AND CALCULATING MOTION VECTORS----------------------------------------------------------------------------------------------------------------------------------------
+
+
 	//helper function to calculate block based MAD for two 16x16 blocks, one from the current frame and one frome the previous/reference frame, assumes YUV double values, block_size should be 16
 	public static double block_MAD(double[][][] current_block, double[][][] reference_block, int block_size){
 		//current block comes from current frame, reference block is a canidate match for current block from the prev frame
@@ -236,6 +247,177 @@ public class ImageDisplay {
 
 		return MAD;
 	}
+
+
+
+
+	//function to find the best matching macroblock for the current frame's macroblock in the previous frame, return top left coordinate of found macroblock match in previous frame, 
+	//returns array of length 2 that stores the top left coordinate of the found macroblock match in the reference frame
+	public static int[] find_Matching_Macroblock(double[][][] reference_frame, double[][][] current_frame_macroblock, int search_k_val, int height, int width, int current_x, int current_y){
+
+		//set current min MAD to highest value
+		double current_min_MAD = Double.MAX_VALUE;
+
+		//track coordinates for min MAD block
+		int current_min_MAD_x = 0;
+		int current_min_MAD_y = 0;
+		
+		//lets try brute force search the whole frame
+		//how to iterate through current frame 16x16 macroblocks
+		for(int y = 0; y < height; y++){
+			for(int x = 0; x < width; x++){
+			
+				double[][][] reference_macroblock = new double[16][16][3];
+
+			
+				//how to handle image dimensions that don't divide nicely into 16x16 blocks at the end? 490x270 does't split into 16x16 completely
+				if(x + 16 > width || y + 16 > height){
+					//System.out.println("X GOING TO GO OUT OF BOUNDS X = " + String.valueOf(x));
+					break;
+				}
+				
+
+				//loop to fill out macroblock row at current height->current height + 16
+				for(int i = 0; i < 16; i++){
+					reference_macroblock[i] = Arrays.copyOfRange(reference_frame[y+i], x, x+16);
+				}
+
+				//calculate MAD for the generated reference macroblock and input current macroblock, hardcoded blocksize 16
+				double current_MAD = block_MAD(current_frame_macroblock, reference_macroblock, 16);
+
+				//update min MAD seen so far, update the coordinates for this macroblock that produces the min MAD
+				if(current_MAD  < current_min_MAD){
+					current_min_MAD = current_MAD;
+
+					current_min_MAD_x = x;
+					current_min_MAD_y = y;
+				}
+			
+			}
+
+		}
+
+		//System.out.println("MAD FOUND------");
+		//System.out.println(current_min_MAD);
+
+		int[] matching_macroblock_coord = {current_min_MAD_x, current_min_MAD_y};
+
+		return matching_macroblock_coord;
+
+		//return current_min_MAD, current_min_MAD_x, current_min_MAD_y
+
+	}
+
+
+
+
+	//THIS FUNCTION IS THE PRIMARY CALL THAT USES ALL THE OTHER HELPER FUNCTIONS
+
+	//function to calculate all motion vectors given 2 YUV frames
+	public static ArrayList<int[]> get_MotionVectors(double[][][] reference_frame, double[][][] current_frame, int height, int width, int search_k_val){
+
+		//store all the motion vectors for every macroblock in the current frame
+		ArrayList<int[]> all_motion_vectors = new ArrayList<>();
+
+		//how to iterate through current frame 16x16 macroblocks
+		for(int y = 0; y < height; y+=16){
+			for(int x = 0; x < width; x+=16){
+			
+				double[][][] curr_macroblock = new double[16][16][3];
+
+			
+				//how to handle image dimensions that don't divide nicely into 16x16 blocks at the end? 490x270 does't split into 16x16 completely 
+				if(x + 16 > width || y + 16 > height){
+					//System.out.println("X GOING TO GO OUT OF BOUNDS X = " + String.valueOf(x));
+					System.out.println("X OR Y GOING TO GO OUT OF BOUNDS");
+					break;
+				}
+				
+
+				//loop to fill out macroblock row at current height->current height + 16
+				for(int i = 0; i < 16; i++){
+				
+					curr_macroblock[i] = Arrays.copyOfRange(current_frame[y+i], x, x+16);
+					//curr_macroblock[i] = Arrays.copyOfRange(test_frame_yuv[x+i], y, y+16 );
+
+				}
+
+
+				//send out the current x and y to use for checking the previous frame x,y location for a matching macroblock with minimal MAD
+				//find_Matching_Macroblock(reference_frame, curr_macroblock, search_k_val, height, width, x, y);
+
+
+				// tuple matching_block_info = find_Matching_Macroblock(reference_frame, curr_macroblock, search_k_val, height, width, x, y);
+				int[] matching_block_coord = find_Matching_Macroblock(reference_frame, curr_macroblock, search_k_val, height, width, x, y);
+
+				// curr_motion_vector = calculate_MotionVector(matching_block_info['x'], matching_block_info[y], x, y)
+				int[] curr_motion_vector = calculate_MotionVector(matching_block_coord[0], matching_block_coord[1], x, y);
+
+				all_motion_vectors.add(curr_motion_vector);
+			
+			}
+
+		}
+
+		return all_motion_vectors;
+
+	}
+
+
+
+
+	//function to calculate motion vector given 2 points, returns as a int array of length 2, maybe use tuples instead?
+	public static int[] calculate_MotionVector(int reference_x, int reference_y, int current_x, int current_y){
+		//array to store the new calculated MotionVector
+		int[] motion_vector = new int[2];
+
+		//x movement 
+		motion_vector[0] = current_x - reference_x;
+
+		//y movement
+		motion_vector[1] = current_y - reference_y;
+
+		return motion_vector;
+	}
+
+
+
+
+
+
+	//function to determine what the most common motion vector is, if motion vector is within some threshold of the most common, count it as background block, otherwise it is foreground block
+	public static void motionvector_Count(ArrayList<int[]> all_motion_vectors){
+		System.out.println("FINDING MOST COMMON MOTION VECTOR");
+
+		//hashmap to find the most common motion vector int[], key is the motion vector int[x, y] and value is the # of times it was seen Ex: key = [-12,0], value = 200
+
+		//using the most common motion vector, loop through all motion vectors again, if current motion vector is within some thereshold of the most common for both its x and y value, count it as a background block, try threshold = 3 
+
+
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -294,6 +476,10 @@ public class ImageDisplay {
 		}
 	}
 
+
+
+
+	//MAIN FUNCTION
 	public void showIms(String[] args){
 
 		//open folder with input rgb files and put them into a list
@@ -354,7 +540,7 @@ public class ImageDisplay {
 		}
 
 
-
+		/* 
 		//loop to show all the buffered images to play as a video
 		for(int i = 0; i < all_img.size(); i++){
 
@@ -374,7 +560,17 @@ public class ImageDisplay {
 				Thread.currentThread().interrupt();
 			}
 
-		}
+		}*/
+
+
+
+
+
+
+
+
+
+
 
 
 		//TESTING FUNCTIONS AND STUFF HERE
@@ -398,84 +594,51 @@ public class ImageDisplay {
 
 
 
-		System.out.println("CHECKING SUBARRAY COPYING OF NESTED ARRAY(GETTING MACROBLOCKS OUT)");
-
-		//use test_frame_rgb to see if we can get the first macroblock out
-
-		int[][][] macroblock = new int[16][16][3];
-
-		for(int i = 0; i < 16; i++){
-			macroblock[i] = Arrays.copyOf(test_frame_rgb[i], 16);
-		}
-
-		for(int y = 0; y < 16; y++){
-			for(int x = 0; x < 16; x++){
-
-				System.out.println("ORIGINAL:");
-				System.out.println(String.valueOf(test_frame_rgb[y][x][0]) + ", " + String.valueOf(test_frame_rgb[y][x][1]) + ", " + String.valueOf(test_frame_rgb[y][x][2]));
-
-				System.out.println("MACROBLOCK:");
-				System.out.println(String.valueOf(macroblock[y][x][0]) + ", " + String.valueOf(macroblock[y][x][1]) + ", " + String.valueOf(macroblock[y][x][2]));
-
-				System.out.println("----------------------------------------------------------------------------------------------------");
-			}
-		}
-		
-		System.out.println("MACROBLOCK DIMENSIONS");
-		System.out.println(macroblock.length);
-		System.out.println(macroblock[0].length);
-		System.out.println(macroblock[0][0].length);
-
-		System.out.println("FULL FRAME DIMENSIONS");
-		System.out.println(test_frame_rgb.length);
-		System.out.println(test_frame_rgb[0].length);
-		System.out.println(test_frame_rgb[0][0].length);
-
 
 		//MACROBLOCK LOOPING
 		
 		//yuv values for last frame
 		double[][][] test_frame_yuv = getImageYUV(width, height, test_filepath);
 
-		//how to iterate through current frame macroblocks
-		for(int y = 0; y < height; y+=16){
-			for(int x = 0; x < width; x+=16){
-				//macroblock[y] = Arrays.copyOfRange(test_frame_rgb[y], x, x+16);
-				//System.out.println("Coordinates-------------------------");
-				//System.out.println(String.valueOf(x) + ", " + String.valueOf(y));
+		//yuv values for second to last frame, the test reference frame
+		//String test_filepath_reference = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.436.rgb";
+		String test_filepath_reference = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.427.rgb";
+		double[][][] test_frame_yuv_reference = getImageYUV(width, height, test_filepath_reference);
 
-				double[][][] curr_macroblock = new double[16][16][3];
 
-				
-				//how to handle image dimensions that don't divide nicely into 16x16 blocks at the end? 490x270 does't split into 16x16 completely
-				if(x + 16 > width){
-					System.out.println("X GOING TO GO OUT OF BOUNDS X = " + String.valueOf(x));
-					break;
-				}
-				else if(y + 16 > height){
-					System.out.println("Y GOING TO GO OUT OF BOUNDS Y = " + String.valueOf(y));
-					break;
-				}
+		ArrayList<int[]> test_motion_vectors = get_MotionVectors(test_frame_yuv_reference, test_frame_yuv, height, width, 16);
 
-				//loop to fill out macroblock row at current height->current height + 16
-				for(int i = 0; i < 16; i++){
-					curr_macroblock[i] = Arrays.copyOfRange(test_frame_yuv[y+i], x, x+16);
-					//curr_macroblock[i] = Arrays.copyOfRange(test_frame_yuv[x+i], y, y+16 );
-				}
+		for(int i = 0; i < test_motion_vectors.size(); i++){
+			System.out.println("Motion Vector " + String.valueOf(i) + "----------------------------------------------------");
 
-				System.out.println("MACROBLOCK DIMENSIONS");
-				System.out.println(curr_macroblock.length);
-				System.out.println(curr_macroblock[0].length);
-				System.out.println(curr_macroblock[0][0].length);
-			}
-
+			//print out the motion vector for the ith macroblock
+			System.out.println("(x = " + String.valueOf(test_motion_vectors.get(i)[0]) + ", y = " + String.valueOf(test_motion_vectors.get(i)[1]) + ")");
 		}
+
+
+		//camera moving right should have a lot of negative x values in the motion vector, because macroblock in current frame was further left in the previous frame
+
+		
+
+		//TESTING MACROBLOCK FUNCTIONS 
+
+		// current = (1,3)   reference = (20,10)
+		//int[] test_motion_vector = calculate_MotionVector(20, 10, 1, 3);
+
+		//System.out.println("TEST MOTION VECTOR");
+		//System.out.println(test_motion_vector[0]);
+		//System.out.println(test_motion_vector[1]);
+
 
 		
 
 
 
 		//frame dimensions not perfectly divisible by 16x16 blocks
+
+		//maybe for motion vector similarity, calculate the running average/median motion vector for all the found macroblock pairs for 2 frames. If a motion vector is too far off from the average/median motion vector, count it as a foregound block
+
+		//given average motion vector(u,v) if current motion vector (x,y). if |u-x| and/or |v-y| is too big, count it as a foregound block
 
 
 
