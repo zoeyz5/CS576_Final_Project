@@ -386,14 +386,79 @@ public class ImageDisplay {
 
 
 	//function to determine what the most common motion vector is, if motion vector is within some threshold of the most common, count it as background block, otherwise it is foreground block
-	public static void motionvector_Count(ArrayList<int[]> all_motion_vectors){
+	public static int[] most_common_motionvector_Count(ArrayList<int[]> all_motion_vectors){
 		System.out.println("FINDING MOST COMMON MOTION VECTOR");
 
 		//hashmap to find the most common motion vector int[], key is the motion vector int[x, y] and value is the # of times it was seen Ex: key = [-12,0], value = 200
 
 		//using the most common motion vector, loop through all motion vectors again, if current motion vector is within some thereshold of the most common for both its x and y value, count it as a background block, try threshold = 3 
 
+		Map<int[], Integer> motion_vector_map = new HashMap<int[], Integer>();
 
+		//loop through all motion vectors and add it to the HashMap, increment count value if seen before
+		for(int i = 0; i < all_motion_vectors.size(); i++){
+			//retrieve the current motion vector
+			int[] current_key = all_motion_vectors.get(i);
+
+			//update motion vector hashmap
+			if(motion_vector_map.containsKey(current_key)){
+				//retrieve value for this key AKA the count for this given motion vector
+				int current_count = motion_vector_map.get(current_key);
+
+				//increment the count and update hashmap
+				current_count++;
+				motion_vector_map.put(current_key, current_count);
+			}
+			else{
+				motion_vector_map.put(current_key, 1);
+			}
+		}
+
+		
+		//find the most common motion vector key
+		int max_count = 0;
+		int[] most_common_motion_vector = {Integer.MAX_VALUE, Integer.MAX_VALUE};
+
+		for(Entry<int[], Integer> item : motion_vector_map.entrySet()){
+			//compare current motion vector cound to the max seen so far, update if current motion vector count is higher
+			if(item.getValue() > max_count){
+				max_count = item.getValue();
+				most_common_motion_vector = item.getKey();
+			}
+		}
+
+		//return the found most common motion vector
+		return most_common_motion_vector;
+
+	}
+
+
+
+	//function to calculate background and foregound blocks given the most common vector and threshold value
+	public static ArrayList<Boolean> group_Blocks(ArrayList<int[]> all_motion_vectors, int[] most_common_motion_vector, int threshold){
+		System.out.println("DETERMINING BACKGROUND AND FOREGROUND BLOCKS");
+
+		//arraylist to store booleans that mark whether the current index motion vector is a foregound block or not
+		ArrayList<Boolean> is_foreground_block = new ArrayList<>();
+
+		int most_common_x = most_common_motion_vector[0];
+		int most_common_y = most_common_motion_vector[1];
+
+		//if current motion vector x and y movement is within some threshold of the most common motion vector, count it as background, otherwise count it as a foreground block
+		for(int i = 0; i < all_motion_vectors.size(); i++){
+			int [] current_motion_vector = all_motion_vectors.get(i);
+
+			//if either current motion vector differences are more than threshold, mark as foregound block
+			if((Math.abs(current_motion_vector[0] - most_common_x) > threshold) || (Math.abs(current_motion_vector[1] - most_common_y) > threshold)){
+				is_foreground_block.add(true);
+			}
+			//otherwise mark it as a background block
+			else{
+				is_foreground_block.add(false);
+			}
+		}
+
+		return is_foreground_block;
 	}
 
 
@@ -595,7 +660,7 @@ public class ImageDisplay {
 
 
 
-		//MACROBLOCK LOOPING
+		//MACROBLOCK LOOPING TESTING
 		
 		//yuv values for last frame
 		double[][][] test_frame_yuv = getImageYUV(width, height, test_filepath);
@@ -606,17 +671,48 @@ public class ImageDisplay {
 		double[][][] test_frame_yuv_reference = getImageYUV(width, height, test_filepath_reference);
 
 
+		//get motion vectors for 2 test frames
 		ArrayList<int[]> test_motion_vectors = get_MotionVectors(test_frame_yuv_reference, test_frame_yuv, height, width, 16);
 
+		//get the most common motion vector for the 2 test frames
+		int[] most_common_motion_vector = most_common_motionvector_Count(test_motion_vectors);
+		System.out.println("MOST COMMON MOTION VECTOR: (x = " + String.valueOf(most_common_motion_vector[0]) + ", y = " + String.valueOf(most_common_motion_vector[1]) + ")");
+
+		//mark each motion vector as denoting a foregound block or not
+		ArrayList<Boolean> test_is_foreground_block = group_Blocks(test_motion_vectors, most_common_motion_vector, 4);
+
+		
+		int foreground_count = 0;
+		int background_count = 0;
+
+		//print out all the motion vectors and if they are foregound blocks or not
 		for(int i = 0; i < test_motion_vectors.size(); i++){
 			System.out.println("Motion Vector " + String.valueOf(i) + "----------------------------------------------------");
 
 			//print out the motion vector for the ith macroblock
 			System.out.println("(x = " + String.valueOf(test_motion_vectors.get(i)[0]) + ", y = " + String.valueOf(test_motion_vectors.get(i)[1]) + ")");
+
+			//if current motion vector denotes foreground block
+			if(test_is_foreground_block.get(i)){
+				System.out.println("FOREGROUND");
+				foreground_count++;
+			}
+			else{
+				System.out.println("BACKGROUND");
+				background_count++;
+			}
 		}
 
+		System.out.println("----------------------------------------------------------------------------");
+		System.out.println("BACKGROUND COUNT = " + String.valueOf(background_count));
+		System.out.println("FOREGROUND COUNT = " + String.valueOf(foreground_count));
 
-		//camera moving right should have a lot of negative x values in the motion vector, because macroblock in current frame was further left in the previous frame
+		
+
+		
+
+
+		//camera moving right should have a lot of negative x values in the motion vector, because macroblock in current frame was further left in the previous frame 
 
 		
 
