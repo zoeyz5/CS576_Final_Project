@@ -8,6 +8,7 @@ import java.util.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.List;
 
 
 
@@ -391,7 +392,7 @@ public class ImageDisplay {
 				//how to handle image dimensions that don't divide nicely into 16x16 blocks at the end? 490x270 does't split into 16x16 completely 
 				if(x + 16 > width || y + 16 > height){
 					//System.out.println("X GOING TO GO OUT OF BOUNDS X = " + String.valueOf(x));
-					System.out.println("X OR Y GOING TO GO OUT OF BOUNDS");
+					//System.out.println("X OR Y GOING TO GO OUT OF BOUNDS");
 					break;
 				}
 				
@@ -455,37 +456,41 @@ public class ImageDisplay {
 
 		//using the most common motion vector, loop through all motion vectors again, if current motion vector is within some thereshold of the most common for both its x and y value, count it as a background block, try threshold = 3 
 
-		Map<int[], Integer> motion_vector_map = new HashMap<int[], Integer>();
+		Map<List<Integer>, Integer> motion_vector_map = new HashMap<List<Integer>, Integer>();
 
 		//loop through all motion vectors and add it to the HashMap, increment count value if seen before
 		for(int i = 0; i < all_motion_vectors.size(); i++){
 			//retrieve the current motion vector
 			int[] current_key = all_motion_vectors.get(i);
+			// arrays do not implement equals, so we need to convert to a list
+			List<Integer> current_key_list = Arrays.asList(current_key[0], current_key[1]);
 
 			//update motion vector hashmap
-			if(motion_vector_map.containsKey(current_key)){
+			if(motion_vector_map.containsKey(current_key_list)){
 				//retrieve value for this key AKA the count for this given motion vector
-				int current_count = motion_vector_map.get(current_key);
+				int current_count = motion_vector_map.get(current_key_list);
 
 				//increment the count and update hashmap
 				current_count++;
-				motion_vector_map.put(current_key, current_count);
+				motion_vector_map.put(current_key_list, current_count);
 			}
 			else{
-				motion_vector_map.put(current_key, 1);
+				motion_vector_map.put(current_key_list, 1);
 			}
 		}
 
-		
 		//find the most common motion vector key
 		int max_count = 0;
 		int[] most_common_motion_vector = {Integer.MAX_VALUE, Integer.MAX_VALUE};
 
-		for(Entry<int[], Integer> item : motion_vector_map.entrySet()){
+		System.out.println("Printing motion vector counts for frequency analysis");
+		for(Entry<List<Integer>, Integer> item : motion_vector_map.entrySet()){
+			//print all motion vectors and their counts for debugging
+			System.out.println("Key: (x = " + String.valueOf(item.getKey().get(0)) + " , y = " + String.valueOf(item.getKey().get(1)) + "), Value: " + item.getValue());
 			//compare current motion vector cound to the max seen so far, update if current motion vector count is higher
 			if(item.getValue() > max_count){
 				max_count = item.getValue();
-				most_common_motion_vector = item.getKey();
+				most_common_motion_vector = new int[]{item.getKey().get(0), item.getKey().get(1)};
 			}
 		}
 
@@ -542,7 +547,7 @@ public class ImageDisplay {
 			
 				//how to handle image dimensions that don't divide nicely into 16x16 blocks at the end? 490x270 does't split into 16x16 completely 
 				if(x + 16 > width || y + 16 > height){
-					System.out.println("X OR Y GOING TO GO OUT OF BOUNDS");
+					//System.out.println("X OR Y GOING TO GO OUT OF BOUNDS");
 
 					//if frame dimensions are not perfectly divisible into 16x16, fill it leftover pixel coordinates as background white pixels
 					for(int macro_y = y; macro_y < height; macro_y++){
@@ -742,7 +747,7 @@ public class ImageDisplay {
 		//list to store all buffed image YUV values for every pixel
 		ArrayList<double[][][]> all_img_yuv = new ArrayList<>();
 
-		//loop through each rgb file in the folder to show it as a video, exact RGB values for each image, store in big list to convert to YUV later
+		/*loop through each rgb file in the folder to show it as a video, exact RGB values for each image, store in big list to convert to YUV later
 		for(String file : file_list){
 
 			//generate location for every rgb file to pass to readImageRGB()
@@ -764,7 +769,7 @@ public class ImageDisplay {
 
 			all_img.add(current_img);
 
-		}
+		}*/
 
 
 		 
@@ -788,15 +793,6 @@ public class ImageDisplay {
 			}
 
 		}*/
-
-
-
-
-
-
-
-
-
 
 
 
@@ -833,21 +829,21 @@ public class ImageDisplay {
 
 		//print out all the motion vectors and if they are foregound blocks or not
 		for(int i = 0; i < test_motion_vectors.size(); i++){
-			System.out.println("Motion Vector " + String.valueOf(i) + "----------------------------------------------------");
+			//System.out.println("Motion Vector " + String.valueOf(i) + "----------------------------------------------------");
 
 			//print out the motion vector for the ith macroblock
-			System.out.println("(x = " + String.valueOf(test_motion_vectors.get(i)[0]) + ", y = " + String.valueOf(test_motion_vectors.get(i)[1]) + ")");
+			//System.out.println("(x = " + String.valueOf(test_motion_vectors.get(i)[0]) + ", y = " + String.valueOf(test_motion_vectors.get(i)[1]) + ")");
 
 			//if current motion vector denotes foreground block
 			if(test_is_foreground_block.get(i)){
-				System.out.println("FOREGROUND");
+				//System.out.println("FOREGROUND");
 				foreground_count++;
 			}
 			else{
-				System.out.println("BACKGROUND");
+				//System.out.println("BACKGROUND");
 				background_count++;
 			}
-		}
+		} 
 
 		System.out.println("----------------------------------------------------------------------------");
 		System.out.println("BACKGROUND COUNT = " + String.valueOf(background_count));
