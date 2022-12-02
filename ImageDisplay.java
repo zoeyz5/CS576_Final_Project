@@ -253,7 +253,7 @@ public class ImageDisplay {
 
 	//function to find the best matching macroblock for the current frame's macroblock in the previous frame, return top left coordinate of found macroblock match in previous frame, 
 	//returns array of length 2 that stores the top left coordinate of the found macroblock match in the reference frame
-	public static int[] find_Matching_Macroblock(double[][][] reference_frame, double[][][] current_frame_macroblock, int search_k_val, int height, int width, int current_x, int current_y){
+	/*public static int[] find_Matching_Macroblock(double[][][] reference_frame, double[][][] current_frame_macroblock, int search_k_val, int height, int width, int current_x, int current_y){
 
 		//set current min MAD to highest value
 		double current_min_MAD = Double.MAX_VALUE;
@@ -276,6 +276,68 @@ public class ImageDisplay {
 					break;
 				}
 				
+
+				//loop to fill out macroblock row at current height->current height + 16
+				for(int i = 0; i < 16; i++){
+					reference_macroblock[i] = Arrays.copyOfRange(reference_frame[y+i], x, x+16);
+				}
+
+				//calculate MAD for the generated reference macroblock and input current macroblock, hardcoded blocksize 16
+				double current_MAD = block_MAD(current_frame_macroblock, reference_macroblock, 16);
+
+				//update min MAD seen so far, update the coordinates for this macroblock that produces the min MAD
+				if(current_MAD  < current_min_MAD){
+					current_min_MAD = current_MAD;
+
+					current_min_MAD_x = x;
+					current_min_MAD_y = y;
+				}
+			
+			}
+
+		}
+
+		//System.out.println("MAD FOUND------");
+		//System.out.println(current_min_MAD);
+
+		int[] matching_macroblock_coord = {current_min_MAD_x, current_min_MAD_y};
+
+		return matching_macroblock_coord;
+
+		//return current_min_MAD, current_min_MAD_x, current_min_MAD_y
+
+	}*/
+
+
+	public static int[] find_Matching_Macroblock(double[][][] reference_frame, double[][][] current_frame_macroblock, int search_k_val, int height, int width, int current_x, int current_y){
+
+		//set current min MAD to highest value
+		double current_min_MAD = Double.MAX_VALUE;
+
+		//track coordinates for min MAD block
+		int current_min_MAD_x = 0;
+		int current_min_MAD_y = 0;
+
+		//define search area coordinates using the input k value, if area to check goes out of bounds, clamp it down
+		int start_x = (current_x - search_k_val < 0) ? 0 : (current_x - search_k_val);
+		int end_x = (current_x + search_k_val > width) ? width : (current_x + search_k_val);
+
+		int start_y = (current_y - search_k_val < 0) ? 0 : (current_y - search_k_val);
+		int end_y = (current_y + search_k_val > height) ? height : (current_y + search_k_val);
+
+		
+		
+		//search neighbors in the area using the coordinates from the current macroblock
+		//how to iterate through current frame 16x16 macroblocks
+		for(int y = start_y; y < end_y; y++){
+			for(int x = start_x; x < end_x; x++){
+			
+				double[][][] reference_macroblock = new double[16][16][3];
+				
+
+				if(x + 16 > width || y + 16 > height){
+					break;
+				}
 
 				//loop to fill out macroblock row at current height->current height + 16
 				for(int i = 0; i < 16; i++){
@@ -707,7 +769,7 @@ public class ImageDisplay {
 
 		 
 		//loop to show all the buffered images to play as a video
-		for(int i = 0; i < all_img.size(); i++){
+		/*for(int i = 0; i < all_img.size(); i++){
 
 			//replace the previous frame with the newest one
 			//lbIm1.setIcon(new ImageIcon(background_img));
@@ -725,7 +787,7 @@ public class ImageDisplay {
 				Thread.currentThread().interrupt();
 			}
 
-		}
+		}*/
 
 
 
@@ -741,47 +803,29 @@ public class ImageDisplay {
 		//TESTING FUNCTIONS AND STUFF HERE
 
 		//testing storing RGB values from one frame
-		String test_filepath = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.010.rgb";
+		String test_filepath = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.230.rgb";
 		int[][][] test_frame_rgb = getImageRGB(width, height, test_filepath);
-
-		//print out all RGB pixel values for this frame
-		for(int y = 0; y < height; y++){
-			for(int x = 0; x < width; x++){
-				System.out.println(String.valueOf(test_frame_rgb[y][x][0]) + ", " + String.valueOf(test_frame_rgb[y][x][1]) + ", " + String.valueOf(test_frame_rgb[y][x][2]));
-			}
-		}
-
-	
-
-		//check if all size of all the stored data is right, should be equal to the amount of frames
-		System.out.println(all_img.size());
-		System.out.println(all_img_rgb.size());
-
-
-
-
-		//MACROBLOCK LOOPING TESTING
 		
 		//yuv values for last frame
 		double[][][] test_frame_yuv = getImageYUV(width, height, test_filepath);
 
 		//yuv values for second to last frame, the test reference frame
 		//String test_filepath_reference = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.436.rgb";
-		String test_filepath_reference = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.001.rgb";
+		String test_filepath_reference = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.229.rgb";
 		double[][][] test_frame_yuv_reference = getImageYUV(width, height, test_filepath_reference);
 
 
 
 		 
 		//get motion vectors for 2 test frames
-		ArrayList<int[]> test_motion_vectors = get_MotionVectors(test_frame_yuv_reference, test_frame_yuv, height, width, 16);
+		ArrayList<int[]> test_motion_vectors = get_MotionVectors(test_frame_yuv_reference, test_frame_yuv, height, width, 50);
 
 		//get the most common motion vector for the 2 test frames
 		int[] most_common_motion_vector = most_common_motionvector_Count(test_motion_vectors);
 		System.out.println("MOST COMMON MOTION VECTOR: (x = " + String.valueOf(most_common_motion_vector[0]) + ", y = " + String.valueOf(most_common_motion_vector[1]) + ")");
 
 		//mark each motion vector as denoting a foregound block or not
-		ArrayList<Boolean> test_is_foreground_block = group_Blocks(test_motion_vectors, most_common_motion_vector, 4);
+		ArrayList<Boolean> test_is_foreground_block = group_Blocks(test_motion_vectors, most_common_motion_vector, 1);
 
 		
 		int foreground_count = 0;
