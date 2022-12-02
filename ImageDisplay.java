@@ -464,7 +464,73 @@ public class ImageDisplay {
 
 
 
+	//function to extract foreground elements by whiting out background macroblocks, can inverse this process for extracting background 
+	//will return int[][][3] of RGB values, must convert from YUB back to RGB for this
+	public static int[][][] extract_Foreground(ArrayList<Boolean> is_foreground_block, double[][][] current_frame_yuv, int height, int width){
+		System.out.println("GETTING FOREGROUND MACROBLOCKS");
 
+		//set up array for storing the final RGB values for the extracted frame, this means most of it will be whited out since background is most blocks
+		int[][][] extracted_rgb = new int[current_frame_yuv.length][current_frame_yuv[0].length][3];
+		//to track reference the foreground boolean arraylist, since loop increments in intervals of 16
+		int list_iterator = 0;
+
+		//loop through the provided frame YUV values in macroblock intervals
+		for(int y = 0; y < height; y+=16){
+			for(int x = 0; x < width; x+=16){
+			
+				//how to handle image dimensions that don't divide nicely into 16x16 blocks at the end? 490x270 does't split into 16x16 completely 
+				if(x + 16 > width || y + 16 > height){
+					System.out.println("X OR Y GOING TO GO OUT OF BOUNDS");
+
+					//if frame dimensions are not perfectly divisible into 16x16, fill it leftover pixel coordinates as background white pixels
+					for(int macro_y = y; macro_y < height; macro_y++){
+						for(int macro_x = x; macro_x < width; macro_x++){
+							//set this pixel RGB to white
+							int[] white_pixel = {255,255,255};
+
+							extracted_rgb[macro_y][macro_x] = white_pixel;
+						}
+					}
+
+					break;
+				}
+
+				//case where this macroblock is a foreground block, convert first to RGB then copy over into final result array
+				if(is_foreground_block.get(list_iterator)){
+					//loop within this macroblock and copy over
+					for(int macro_y = y; macro_y < y+16; macro_y++){
+						for(int macro_x = x; macro_x < x+16; macro_x++){
+							
+							//convert current pixel in macroblock YUV to RGB
+							int[] pixel_rgb = convert_YUV_to_RGB(current_frame_yuv[macro_y][macro_x][0], current_frame_yuv[macro_y][macro_x][1], current_frame_yuv[macro_y][macro_x][2]);
+
+							//set the pixel RGB values back to the final image since this is foreground pixel
+							extracted_rgb[macro_y][macro_x] = pixel_rgb;
+						}
+					}
+				}
+				//case where macroblock is background, set all pixel values in block area to white 
+				else{
+					//since each macroblock is referenced at top left coordinate, loop till the end of this current macroblock area
+					for(int macro_y = y; macro_y < y+16; macro_y++){
+						for(int macro_x = x; macro_x < x+16; macro_x++){
+							//set this pixel RGB to white
+							int[] white_pixel = {255,255,255};
+
+							extracted_rgb[macro_y][macro_x] = white_pixel;
+						}
+					}
+				}
+				
+
+				list_iterator++;
+
+			
+			}
+		}
+
+		return extracted_rgb;
+	}
 
 
 
@@ -541,6 +607,40 @@ public class ImageDisplay {
 		}
 	}
 
+	//modified version that reads in image using frame RGB pixel array
+	private void readImageRGB_Array(int width, int height, int[][][] frame_rgb, BufferedImage img)
+	{
+		
+		//int ind = 0;
+		for(int y = 0; y < height; y++)
+		{
+			for(int x = 0; x < width; x++)
+			{
+					//byte a = 0;
+					//byte r = bytes[ind];
+					//byte g = bytes[ind+height*width];
+					//byte b = bytes[ind+height*width*2]; 
+
+					
+					//byte a = 0;
+					//byte r = bytes[3*ind];
+					//byte g = bytes[3*ind+1];
+					//byte b = bytes[3*ind+2]; 
+
+
+					//int pix = 0xff000000 | ((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff);
+					//int pix = ((a << 24) + (r << 16) + (g << 8) + b);
+
+
+				int pix = 0xff000000 | (frame_rgb[y][x][0] << 16) | (frame_rgb[y][x][1] << 8) | (frame_rgb[y][x][2]);
+
+				img.setRGB(x,y,pix);
+				//ind++;
+			}
+		}
+			
+	}
+
 
 
 
@@ -605,7 +705,7 @@ public class ImageDisplay {
 		}
 
 
-		/* 
+		 
 		//loop to show all the buffered images to play as a video
 		for(int i = 0; i < all_img.size(); i++){
 
@@ -625,7 +725,7 @@ public class ImageDisplay {
 				Thread.currentThread().interrupt();
 			}
 
-		}*/
+		}
 
 
 
@@ -641,7 +741,7 @@ public class ImageDisplay {
 		//TESTING FUNCTIONS AND STUFF HERE
 
 		//testing storing RGB values from one frame
-		String test_filepath = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.437.rgb";
+		String test_filepath = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.010.rgb";
 		int[][][] test_frame_rgb = getImageRGB(width, height, test_filepath);
 
 		//print out all RGB pixel values for this frame
@@ -667,10 +767,12 @@ public class ImageDisplay {
 
 		//yuv values for second to last frame, the test reference frame
 		//String test_filepath_reference = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.436.rgb";
-		String test_filepath_reference = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.427.rgb";
+		String test_filepath_reference = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.001.rgb";
 		double[][][] test_frame_yuv_reference = getImageYUV(width, height, test_filepath_reference);
 
 
+
+		 
 		//get motion vectors for 2 test frames
 		ArrayList<int[]> test_motion_vectors = get_MotionVectors(test_frame_yuv_reference, test_frame_yuv, height, width, 16);
 
@@ -705,14 +807,38 @@ public class ImageDisplay {
 
 		System.out.println("----------------------------------------------------------------------------");
 		System.out.println("BACKGROUND COUNT = " + String.valueOf(background_count));
-		System.out.println("FOREGROUND COUNT = " + String.valueOf(foreground_count));
+		System.out.println("FOREGROUND COUNT = " + String.valueOf(foreground_count)); 
+
+
+		//get the extracted foreground image from the test current frame(not the reference frame since we extract foreground/background for current frame) 
+		int[][][] extracted_foreground_rgb = extract_Foreground(test_is_foreground_block, test_frame_yuv, height, width);
+		
+
+
+		//test out reading image from pixel RGB array
+		BufferedImage test_img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+		readImageRGB_Array(width, height, extracted_foreground_rgb, test_img);
+
+		//readImageRGB_Array(width, height, test_frame_rgb, test_img);
+
+
+		lbIm1.setIcon(new ImageIcon(test_img));
+
+		//show the current test frame
+		frame.setContentPane(lbIm1);
+		frame.pack();
+		frame.setVisible(true);
+
+
+
+		//test whiting out the pixels for all the false blocks, loop in the same +16 intervals like for the macroblock search, if that block is background white it out to see if foreground extraction is working
 
 		
 
 		
 
 
-		//camera moving right should have a lot of negative x values in the motion vector, because macroblock in current frame was further left in the previous frame 
+		//camera moving right should have a lot of negative x values in the motion vector, because macroblock in current frame is further left compared to the previous frame  
 
 		
 
