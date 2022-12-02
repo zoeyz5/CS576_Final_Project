@@ -4,9 +4,7 @@ import java.awt.image.*;
 import java.io.*;
 import javax.swing.*;
 import java.util.*;
-
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Map.Entry;
 
 
@@ -455,12 +453,17 @@ public class ImageDisplay {
 
 		//using the most common motion vector, loop through all motion vectors again, if current motion vector is within some thereshold of the most common for both its x and y value, count it as a background block, try threshold = 3 
 
-		Map<int[], Integer> motion_vector_map = new HashMap<int[], Integer>();
+		//Map<int[], Integer> motion_vector_map = new HashMap<int[], Integer>();
+		Map<List<Integer>, Integer> motion_vector_map = new HashMap<List<Integer>, Integer>();
 
 		//loop through all motion vectors and add it to the HashMap, increment count value if seen before
 		for(int i = 0; i < all_motion_vectors.size(); i++){
 			//retrieve the current motion vector
-			int[] current_key = all_motion_vectors.get(i);
+			int[] current_key_array = all_motion_vectors.get(i);
+			
+			List<Integer> current_key = new ArrayList<Integer>();
+			current_key.add(current_key_array[0]);
+			current_key.add(current_key_array[1]);
 
 			//update motion vector hashmap
 			if(motion_vector_map.containsKey(current_key)){
@@ -479,9 +482,9 @@ public class ImageDisplay {
 		
 		//find the most common motion vector key
 		int max_count = 0;
-		int[] most_common_motion_vector = {Integer.MAX_VALUE, Integer.MAX_VALUE};
+		List<Integer> most_common_motion_vector = new ArrayList<Integer>();
 
-		for(Entry<int[], Integer> item : motion_vector_map.entrySet()){
+		for(Entry<List<Integer>, Integer> item : motion_vector_map.entrySet()){
 			//compare current motion vector cound to the max seen so far, update if current motion vector count is higher
 			if(item.getValue() > max_count){
 				max_count = item.getValue();
@@ -489,8 +492,13 @@ public class ImageDisplay {
 			}
 		}
 
+		//convert back to array since other functions expect array as input
+		int [] most_common_motion_vector_array = {most_common_motion_vector.get(0), most_common_motion_vector.get(1)};
+
+		return most_common_motion_vector_array;
+
 		//return the found most common motion vector
-		return most_common_motion_vector;
+		//return most_common_motion_vector;
 
 	}
 
@@ -678,22 +686,6 @@ public class ImageDisplay {
 		{
 			for(int x = 0; x < width; x++)
 			{
-					//byte a = 0;
-					//byte r = bytes[ind];
-					//byte g = bytes[ind+height*width];
-					//byte b = bytes[ind+height*width*2]; 
-
-					
-					//byte a = 0;
-					//byte r = bytes[3*ind];
-					//byte g = bytes[3*ind+1];
-					//byte b = bytes[3*ind+2]; 
-
-
-					//int pix = 0xff000000 | ((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff);
-					//int pix = ((a << 24) + (r << 16) + (g << 8) + b);
-
-
 				int pix = 0xff000000 | (frame_rgb[y][x][0] << 16) | (frame_rgb[y][x][1] << 8) | (frame_rgb[y][x][2]);
 
 				img.setRGB(x,y,pix);
@@ -803,7 +795,7 @@ public class ImageDisplay {
 		//TESTING FUNCTIONS AND STUFF HERE
 
 		//testing storing RGB values from one frame
-		String test_filepath = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.230.rgb";
+		String test_filepath = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.100.rgb";
 		int[][][] test_frame_rgb = getImageRGB(width, height, test_filepath);
 		
 		//yuv values for last frame
@@ -811,7 +803,7 @@ public class ImageDisplay {
 
 		//yuv values for second to last frame, the test reference frame
 		//String test_filepath_reference = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.436.rgb";
-		String test_filepath_reference = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.229.rgb";
+		String test_filepath_reference = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.099.rgb";
 		double[][][] test_frame_yuv_reference = getImageYUV(width, height, test_filepath_reference);
 
 
@@ -875,9 +867,14 @@ public class ImageDisplay {
 
 
 
-		//test whiting out the pixels for all the false blocks, loop in the same +16 intervals like for the macroblock search, if that block is background white it out to see if foreground extraction is working
 
-		
+		//maybe try to use the 3 most common motion vectors instead of just the most common
+
+		//also maybe use more than just Y in the MAD calculations with YUV?
+
+		//maybe set a limit of how high the difference can be to count as foreground, this is to account for new blocks popping into frame that didnt exist in previous frames
+
+		//using the previous frame as reference might be too close, since all the motion vectors will be super small like (-1, 0), which makes it really hard to distinguish background and foreground using motion vector difference thresholds
 
 		
 
@@ -886,14 +883,6 @@ public class ImageDisplay {
 
 		
 
-		//TESTING MACROBLOCK FUNCTIONS 
-
-		// current = (1,3)   reference = (20,10)
-		//int[] test_motion_vector = calculate_MotionVector(20, 10, 1, 3);
-
-		//System.out.println("TEST MOTION VECTOR");
-		//System.out.println(test_motion_vector[0]);
-		//System.out.println(test_motion_vector[1]);
 
 
 		
