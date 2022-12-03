@@ -370,9 +370,6 @@ public class ImageDisplay {
 
 
 
-
-	//THIS FUNCTION IS THE PRIMARY CALL THAT USES ALL THE OTHER HELPER FUNCTIONS
-
 	//function to calculate all motion vectors given 2 YUV frames
 	public static ArrayList<int[]> get_MotionVectors(double[][][] reference_frame, double[][][] current_frame, int height, int width, int search_k_val){
 
@@ -446,7 +443,7 @@ public class ImageDisplay {
 
 
 	//function to determine what the most common motion vector is, if motion vector is within some threshold of the most common, count it as background block, otherwise it is foreground block
-	public static int[] most_common_motionvector_Count(ArrayList<int[]> all_motion_vectors){
+	public static List<int[]> most_common_motionvector_Count(ArrayList<int[]> all_motion_vectors){
 		System.out.println("FINDING MOST COMMON MOTION VECTOR");
 
 		//hashmap to find the most common motion vector int[], key is the motion vector int[x, y] and value is the # of times it was seen Ex: key = [-12,0], value = 200
@@ -482,20 +479,56 @@ public class ImageDisplay {
 		
 		//find the most common motion vector key
 		int max_count = 0;
+		int second_max_count = 0;
+		int third_max_count = 0;
+
 		List<Integer> most_common_motion_vector = new ArrayList<Integer>();
+		List<Integer> second_most_common_motion_vector = new ArrayList<Integer>();
+		List<Integer> third_most_common_motion_vector = new ArrayList<Integer>();
 
 		for(Entry<List<Integer>, Integer> item : motion_vector_map.entrySet()){
 			//compare current motion vector cound to the max seen so far, update if current motion vector count is higher
 			if(item.getValue() > max_count){
+				
+				int temp_count = max_count;
+				List<Integer> temp_motion_vector = most_common_motion_vector;				 
+
 				max_count = item.getValue();
 				most_common_motion_vector = item.getKey();
+
+				if(temp_count > second_max_count){
+
+					int temp_count2 = second_max_count;
+					List<Integer> temp_motion_vector2 = second_most_common_motion_vector;
+
+					second_max_count = temp_count;
+					second_most_common_motion_vector = temp_motion_vector;
+
+					if(temp_count2 > third_max_count){
+						third_max_count = temp_count2;
+						third_most_common_motion_vector = temp_motion_vector2;
+					}
+				}
 			}
+
+
 		}
 
 		//convert back to array since other functions expect array as input
-		int [] most_common_motion_vector_array = {most_common_motion_vector.get(0), most_common_motion_vector.get(1)};
+		int [] most_common_motion_vector_array = {most_common_motion_vector.get(0), most_common_motion_vector.get(1), max_count};
+		//int [] second_most_common_motion_vector_array = {second_most_common_motion_vector.get(0), second_most_common_motion_vector.get(1), second_max_count};
+		//int [] third_most_common_motion_vector_array = {third_most_common_motion_vector.get(0), third_most_common_motion_vector.get(1), third_max_count};
 
-		return most_common_motion_vector_array;
+
+		List<int[]> three_most_common = new ArrayList<int[]>();
+
+		three_most_common.add(most_common_motion_vector_array);
+		//three_most_common.add(second_most_common_motion_vector_array);
+		//three_most_common.add(third_most_common_motion_vector_array);
+
+		return three_most_common;
+
+		//return most_common_motion_vector_array ;
 
 		//return the found most common motion vector
 		//return most_common_motion_vector;
@@ -604,6 +637,74 @@ public class ImageDisplay {
 
 
 
+	//THIS FUNCTION IS THE PRIMARY CALL THAT USES ALL THE OTHER HELPER FUNCTIONS
+
+	//main function that calls the others for background and foreground extraction
+	public static void extract_frames(ArrayList<double[][][]> all_img_yuv, int height, int width, int frame_difference, int search_k_val, int threshold){
+
+		System.out.println("EXTRACTING FOREGROUND AND BACKGROUND");
+
+		//store all the extracted foreground frame RGB values
+		ArrayList<int[][][]> foreground_rgb = new ArrayList<>();
+
+		//loop through all frames and separate foreground and background starting from frame 5
+		for(int i = frame_difference; i < all_img_yuv.size(); i++){
+			double[][][] current_frame_yuv = all_img_yuv.get(i);
+			double[][][] reference_frame_yuv = all_img_yuv.get(i-frame_difference);
+
+			//get all the motion vectors for this frame pair
+			ArrayList<int[]> frame_motion_vectors = get_MotionVectors(reference_frame_yuv, current_frame_yuv, height, width, search_k_val);
+
+			//find the 3 most common motion vectors
+			List<int[]> three_most_common = most_common_motionvector_Count(frame_motion_vectors);
+
+			//mark each motion vector as denoting a foregound block or not
+			ArrayList<Boolean> is_foreground_block = group_Blocks(frame_motion_vectors, three_most_common.get(0), threshold);
+
+			//get the RGB representation of extracted forground
+			int[][][] extracted_foreground_rgb = extract_Foreground(is_foreground_block, current_frame_yuv, height, width);
+
+			//add current extracted frame RGB
+			foreground_rgb.add(extracted_foreground_rgb);
+
+		}
+
+		JFrame frame = new JFrame();
+		GridBagLayout gLayout = new GridBagLayout();
+		frame.getContentPane().setLayout(gLayout);
+
+		BufferedImage current_img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+		JLabel lbIm1 = new JLabel(new ImageIcon(current_img));
+
+
+		//loop to show all the buffered images to play as a video
+		for(int i = 0; i < foreground_rgb.size(); i++){
+
+
+			readImageRGB_Array(width, height, foreground_rgb.get(i), current_img);
+			//replace the previous frame with the newest one
+			//lbIm1.setIcon(new ImageIcon(background_img));
+			lbIm1.setIcon(new ImageIcon(current_img));
+
+			//show the current frame
+			frame.setContentPane(lbIm1);
+			frame.pack();
+			frame.setVisible(true);
+
+			//sleep for a period of time before showing the next frame
+			try {
+				Thread.sleep((long)41.66);          
+			} catch(InterruptedException ex) {
+				Thread.currentThread().interrupt();
+			}
+
+		}
+
+
+	}
+
+
+
 
 
 
@@ -678,7 +779,7 @@ public class ImageDisplay {
 	}
 
 	//modified version that reads in image using frame RGB pixel array
-	private void readImageRGB_Array(int width, int height, int[][][] frame_rgb, BufferedImage img)
+	public static void readImageRGB_Array(int width, int height, int[][][] frame_rgb, BufferedImage img)
 	{
 		
 		//int ind = 0;
@@ -703,6 +804,7 @@ public class ImageDisplay {
 
 		//open folder with input rgb files and put them into a list
 		String folder_path = "SAL_490_270_437/SAL_490_270_437";
+		//String folder_path = "Stairs_490_270_346/Stairs_490_270_346";
 		//String folder_path = args[0];
 		File input_folder = new File(folder_path);
 		//put all the files in the given folder into a list
@@ -761,7 +863,7 @@ public class ImageDisplay {
 
 		 
 		//loop to show all the buffered images to play as a video
-		/*for(int i = 0; i < all_img.size(); i++){
+		for(int i = 0; i < all_img.size(); i++){
 
 			//replace the previous frame with the newest one
 			//lbIm1.setIcon(new ImageIcon(background_img));
@@ -779,23 +881,26 @@ public class ImageDisplay {
 				Thread.currentThread().interrupt();
 			}
 
-		}*/
+		}
 
 
 
 
 
+		//main call, passes in all video frame YUV values, frame difference is difference in frames between current frame and reference frame
+		extract_frames(all_img_yuv, height, width, 5, 16, 8); 
 
 
 
 
 
-
+		/* 
 
 		//TESTING FUNCTIONS AND STUFF HERE
 
 		//testing storing RGB values from one frame
-		String test_filepath = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.100.rgb";
+		//String test_filepath = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.200.rgb";
+		String test_filepath = "Stairs_490_270_346/Stairs_490_270_346/Stairs_490_270_346.200.rgb";
 		int[][][] test_frame_rgb = getImageRGB(width, height, test_filepath);
 		
 		//yuv values for last frame
@@ -803,21 +908,31 @@ public class ImageDisplay {
 
 		//yuv values for second to last frame, the test reference frame
 		//String test_filepath_reference = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.436.rgb";
-		String test_filepath_reference = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.099.rgb";
+		//String test_filepath_reference = "SAL_490_270_437/SAL_490_270_437/SAL_490_270_437.194.rgb";
+		String test_filepath_reference = "Stairs_490_270_346/Stairs_490_270_346/Stairs_490_270_346.195.rgb";
 		double[][][] test_frame_yuv_reference = getImageYUV(width, height, test_filepath_reference);
 
 
 
 		 
 		//get motion vectors for 2 test frames
-		ArrayList<int[]> test_motion_vectors = get_MotionVectors(test_frame_yuv_reference, test_frame_yuv, height, width, 50);
+		ArrayList<int[]> test_motion_vectors = get_MotionVectors(test_frame_yuv_reference, test_frame_yuv, height, width, 16);
 
 		//get the most common motion vector for the 2 test frames
-		int[] most_common_motion_vector = most_common_motionvector_Count(test_motion_vectors);
-		System.out.println("MOST COMMON MOTION VECTOR: (x = " + String.valueOf(most_common_motion_vector[0]) + ", y = " + String.valueOf(most_common_motion_vector[1]) + ")");
+		//int[] most_common_motion_vector = most_common_motionvector_Count(test_motion_vectors);
+		//System.out.println("MOST COMMON MOTION VECTOR: (x = " + String.valueOf(most_common_motion_vector[0]) + ", y = " + String.valueOf(most_common_motion_vector[1]) + ")");
+
+		List<int[]> three_most_common = most_common_motionvector_Count(test_motion_vectors);
+		System.out.println("MOST COMMON MOTION VECTOR: (x = " + String.valueOf(three_most_common.get(0)[0]) + ", y = " + String.valueOf(three_most_common.get(0)[1]) + ") WITH COUNT = " + String.valueOf(three_most_common.get(0)[2]));
+		System.out.println("MOST COMMON MOTION VECTOR: (x = " + String.valueOf(three_most_common.get(1)[0]) + ", y = " + String.valueOf(three_most_common.get(1)[1]) + ") WITH COUNT = " + String.valueOf(three_most_common.get(1)[2]));
+		System.out.println("MOST COMMON MOTION VECTOR: (x = " + String.valueOf(three_most_common.get(2)[0]) + ", y = " + String.valueOf(three_most_common.get(2)[1]) + ") WITH COUNT = " + String.valueOf(three_most_common.get(2)[2]));
+
+
+
+
 
 		//mark each motion vector as denoting a foregound block or not
-		ArrayList<Boolean> test_is_foreground_block = group_Blocks(test_motion_vectors, most_common_motion_vector, 1);
+		ArrayList<Boolean> test_is_foreground_block = group_Blocks(test_motion_vectors, three_most_common.get(0), 8);
 
 		
 		int foreground_count = 0;
@@ -846,6 +961,7 @@ public class ImageDisplay {
 		System.out.println("FOREGROUND COUNT = " + String.valueOf(foreground_count)); 
 
 
+
 		//get the extracted foreground image from the test current frame(not the reference frame since we extract foreground/background for current frame) 
 		int[][][] extracted_foreground_rgb = extract_Foreground(test_is_foreground_block, test_frame_yuv, height, width);
 		
@@ -865,6 +981,12 @@ public class ImageDisplay {
 		frame.pack();
 		frame.setVisible(true);
 
+		System.out.println("MOST COMMON MOTION VECTOR: (x = " + String.valueOf(three_most_common.get(0)[0]) + ", y = " + String.valueOf(three_most_common.get(0)[1]) + ") WITH COUNT = " + String.valueOf(three_most_common.get(0)[2]));
+		System.out.println("MOST COMMON MOTION VECTOR: (x = " + String.valueOf(three_most_common.get(1)[0]) + ", y = " + String.valueOf(three_most_common.get(1)[1]) + ") WITH COUNT = " + String.valueOf(three_most_common.get(1)[2]));
+		System.out.println("MOST COMMON MOTION VECTOR: (x = " + String.valueOf(three_most_common.get(2)[0]) + ", y = " + String.valueOf(three_most_common.get(2)[1]) + ") WITH COUNT = " + String.valueOf(three_most_common.get(2)[2]));
+		
+		
+		*/
 
 
 
