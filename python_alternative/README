@@ -1,0 +1,23 @@
+1. videos_to_frames.py
+
+convert videos to frames of jpg, result in frames folder
+
+2. extract_frames.py
+
+extract foreground and background frames, result in result/video_name folder
+
+3. stitcher.py
+
+example script that stitches the background frames together given the video name, 
+generated panaorama in result/video_name folder/pano.jpg, takes a long time to run
+working great for all videos except video2, can only generate the panos piece-wise, or I will get an error, you may have better luck!
+pano1 is from frame 0 to 199, pano2 is from 100 - 299, pano3 is from 300 - 382
+
+4. test.py
+
+experiment script, do not use
+
+For an alternative way of stitching the background and synthesizing the video, you can check out thie repo:
+https://github.com/chry04/cs445/blob/master/proj5/project%205/Project_5.ipynb
+
+I can't run this as this requires huge memory, but this could give the best result.
