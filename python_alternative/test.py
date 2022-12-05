@@ -12,7 +12,7 @@ cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(
     "COCO-InstanceSegmentation/mask_rcnn_R_50_DC5_1x.yaml")
 predictor = DefaultPredictor(cfg)
 
-cap = cv2.VideoCapture('videos/SAL.mp4')
+cap = cv2.VideoCapture('videos/test1.mp4')
 total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 current_frame = 0
 width = int(cap.get(3))
@@ -22,7 +22,7 @@ print(height)
 fps = cap.get(5)
 print(fps)
 fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
-foreground = cv2.VideoWriter('foreground.mp4', fourcc, fps, (width, height))
+foreground = cv2.VideoWriter('/foreground_vids/test1.mp4', fourcc, fps, (width, height))
 
 stitcher = cv2.Stitcher_create(mode=0)
 result = None
@@ -50,6 +50,6 @@ while success:
 
 backgrounds.reverse()
 result = stitcher.stitch(backgrounds)[1]
-cv2.imwrite("pano.jpg", result)
+cv2.imwrite("/panos/test1.jpg", result)
 foreground.release()
 cap.release()
