@@ -20,10 +20,12 @@ GeneratePanorame.exe inputvideo_640_480_290.mp4
 
 # Application Outputs:
 
-1. Display motion trails by compositing every nth foreground element on the panorama, where n is  your choice of a number. The motion trail is a nice image showing a map of where the foreground  objects were in the panorama.
-2. Create a video a  new video  by defining a path in the panorama image, but it should overlap with the foreground objects in some capacity with the expectation that the foreground objects are composited in time synchronized manner
-3. Remove objects from video: When your video is processed, you have a background panorama  
-and you have one (or more) foreground objects
+1. Display motion trails by compositing every nth foreground element on the panorama, where n is  your choice of a number. The motion trail is a nice image showing a map of where the foreground  objects were in the panorama.<img width="806" alt="Screenshot 2023-01-08 at 8 09 51 PM" src="https://user-images.githubusercontent.com/20672326/211239833-13c3568e-e15c-471e-8d77-872bc843fd8a.png">
+
+2. Create a video a  new video  by defining a path in the panorama image, but it should overlap with the foreground objects in some capacity with the expectation that the foreground objects are composited in time synchronized manner<img width="761" alt="Screenshot 2023-01-08 at 8 10 16 PM" src="https://user-images.githubusercontent.com/20672326/211239869-2d4e51c3-20b8-48c3-8025-184a2ea1d387.png">
+
+3. Remove objects from video: When your video is processed, you have a background panorama and you have one (or more) foreground objects<img width="731" alt="Screenshot 2023-01-08 at 8 10 44 PM" src="https://user-images.githubusercontent.com/20672326/211239884-3e7fc8b7-9b9b-4295-ba76-cd99125a5223.png">
+
 
 # Algorithm:
 ## Step 1: Detecting foreground and background macroblocks using motion compensation  
