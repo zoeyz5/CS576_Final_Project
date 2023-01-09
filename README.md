@@ -12,7 +12,8 @@ an mp4 reader. Here are a few instances.
 GeneratePanorame.exe inputvideo_640_480_290.rgb  
 GeneratePanorame.exe inputvideo_640_480_290.mp4
 
-# Intermediary Outputs
+# Intermediary Outputs<img width="927" alt="Screenshot 2023-01-08 at 8 09 15 PM" src="https://user-images.githubusercontent.com/20672326/211239787-bb2da187-ada7-45df-8a43-7325ecdfd3d8.png">
+
 
 1. A generated panorama of the background with foreground elements removed.
 2. Foreground macroblock elements or objects with coordinates on a frame-by-frame basis.
@@ -30,7 +31,8 @@ You are required to divide each frame of the video into  background  and  foregr
 Enumerated below are some useful guidelines:  
 1.  Divide each image frame into blocks of size 16x16 pixels  
 2.  Compute the Motion Vectors based on the previous frame – this is the block-based MAD 
-3.  Organize the blocks into background and foreground based on the similarity of the directions of their motion vectors. Background macro blocks either have a close to zero motion vectors (if  
+3.  Organize the blocks into background and foregro![Uploading Screenshot 2023-01-08 at 8.08.46 PM.png…]()
+und based on the similarity of the directions of their motion vectors. Background macro blocks either have a close to zero motion vectors (if  
 camera is not moving) or a constant same motion vector (when the camera is moving). On the  
 other hand, foreground macroblocks have similar motion vectors with macroblocks of a moving  
 region and are directionally different from background motion vectors. 
