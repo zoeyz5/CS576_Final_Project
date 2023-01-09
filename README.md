@@ -24,7 +24,8 @@ GeneratePanorame.exe inputvideo_640_480_290.mp4
 
 2. Create a video a  new video  by defining a path in the panorama image, but it should overlap with the foreground objects in some capacity with the expectation that the foreground objects are composited in time synchronized manner<img width="761" alt="Screenshot 2023-01-08 at 8 10 16 PM" src="https://user-images.githubusercontent.com/20672326/211239869-2d4e51c3-20b8-48c3-8025-184a2ea1d387.png">
 
-3. Remove objects from video: When your video is processed, you have a background panorama and you have one (or more) foreground objects<img width="731" alt="Screenshot 2023-01-08 at 8 10 44 PM" src="https://user-images.githubusercontent.com/20672326/211239884-3e7fc8b7-9b9b-4295-ba76-cd99125a5223.png">
+3. Remove objects from video: When your video is processed, you have a background panorama and you have one (or more) foreground objects
+<img width="731" alt="Screenshot 2023-01-08 at 8 10 44 PM" src="https://user-images.githubusercontent.com/20672326/211239884-3e7fc8b7-9b9b-4295-ba76-cd99125a5223.png">
 
 
 # Algorithm:
@@ -33,9 +34,7 @@ You are required to divide each frame of the video into  background  and  foregr
 Enumerated below are some useful guidelines:  
 1.  Divide each image frame into blocks of size 16x16 pixels  
 2.  Compute the Motion Vectors based on the previous frame – this is the block-based MAD 
-3.  Organize the blocks into background and foregro![Uploading Screenshot 2023-01-08 at 8.08.46 PM.png…]()
-und based on the similarity of the directions of their motion vectors. Background macro blocks either have a close to zero motion vectors (if  
-camera is not moving) or a constant same motion vector (when the camera is moving). On the  
+3.  Organize the blocks into background and foreground based on the similarity of the directions of their motion vectors. Background macro blocks either have a close to zero motion vectors (if camera is not moving) or a constant same motion vector (when the camera is moving). On the  
 other hand, foreground macroblocks have similar motion vectors with macroblocks of a moving  
 region and are directionally different from background motion vectors. 
 ## Step 2: Creating a panorama for the background  
